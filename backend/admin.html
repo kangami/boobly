@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Boobly · Admin</title>
+  <style>
+    :root { --pink:#FF5E8A; --purple:#A05CFA; --ink:#1a1330; }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, Arial, sans-serif; margin: 0; background: #f6f4fb; color: var(--ink); }
+    header { background: linear-gradient(90deg, var(--pink), var(--purple)); color: #fff; padding: 16px 24px; display:flex; align-items:center; justify-content:space-between; }
+    header h1 { margin: 0; font-size: 22px; }
+    .wrap { max-width: 1150px; margin: 22px auto; padding: 0 16px; }
+    .gate { background:#fff; padding:24px; border-radius:16px; max-width:420px; margin:60px auto; box-shadow:0 10px 30px rgba(0,0,0,.08); }
+    input, select, button, textarea { font: inherit; }
+    input, select, textarea { padding:10px 13px; border:1px solid #ddd; border-radius:10px; background:#fff; }
+    input[type=password]{ width:100%; }
+    button { cursor:pointer; border:none; border-radius:10px; padding:10px 16px; font-weight:600; color:#fff; background: var(--purple); }
+    button.ghost { background:#eee; color:#333; }
+    button.danger { background:#ffe0e0; color:#b91c1c; }
+    button.sm { padding:7px 12px; font-size:13px; }
+    table { width:100%; border-collapse: collapse; background:#fff; border-radius:14px; overflow:hidden; box-shadow:0 6px 20px rgba(0,0,0,.05); }
+    th, td { text-align:left; padding:11px 13px; border-bottom:1px solid #f0eef6; font-size:14px; vertical-align: top; }
+    th { background:#faf9fe; font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:#888; }
+    .pill { display:inline-block; padding:3px 10px; border-radius:999px; font-size:12px; font-weight:700; }
+    .s-received{background:#eee} .s-paid{background:#d8f5e3;color:#137a43} .s-packed{background:#fff3cd;color:#8a6d00}
+    .s-shipped{background:#d6e4ff;color:#1d4ed8} .s-delivered{background:#d8f5e3;color:#0b7a3b} .s-cancelled{background:#ffd9d9;color:#b91c1c}
+    .k-bottle{background:#e0f0ff;color:#1d4ed8} .k-pod{background:#ffe6f2;color:#c2185b} .k-bundle{background:#fff3cd;color:#8a6d00}
+    .muted { color:#999; font-size:12px; }
+    .row-actions { display:flex; gap:6px; align-items:center; }
+    .bar { display:flex; gap:10px; align-items:center; margin-bottom:16px; flex-wrap:wrap; }
+    .tabs { display:flex; gap:8px; }
+    .tab { background:rgba(255,255,255,.25); color:#fff; }
+    .tab.active { background:#fff; color:var(--purple); }
+    .err { color:#b91c1c; margin-top:8px; font-size:14px; }
+    code { background:#f3f1fa; padding:1px 5px; border-radius:5px; font-size:12px; }
+    .card { background:#fff; border-radius:14px; padding:18px; box-shadow:0 6px 20px rgba(0,0,0,.05); margin-bottom:18px; }
+    .card h3 { margin:0 0 12px; font-size:16px; }
+    .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr)); gap:10px; align-items:end; }
+    .field label { display:block; font-size:12px; color:#888; margin-bottom:4px; }
+    .field input, .field select, .field textarea { width:100%; }
+    input.cell { width:100%; }
+    input.price { width:90px; }
+    input.emoji { width:60px; text-align:center; }
+    .thumb { width:70px; height:70px; border-radius:10px; background:#f0eef6 center/contain no-repeat; display:grid; place-items:center; font-size:11px; color:#bbb; }
+    .thumb-wrap { display:flex; flex-direction:column; gap:6px; align-items:flex-start; }
+    .thumb-box { position:relative; width:70px; }
+    .thumb-x { position:absolute; top:-7px; right:-7px; width:22px; height:22px; padding:0; border-radius:50%;
+      background:#e11d48; color:#fff; font-size:12px; line-height:22px; text-align:center; box-shadow:0 2px 6px rgba(0,0,0,.3); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🌈 Boobly Admin</h1>
+    <div class="tabs" id="tabs" style="display:none">
+      <button class="tab active" data-tab="orders">Orders</button>
+      <button class="tab" data-tab="products">Products</button>
+      <button class="tab" data-tab="customers">Customers</button>
+      <button class="ghost" id="logout">Log out</button>
+    </div>
+  </header>
+
+  <div id="gate" class="gate">
+    <h2 style="margin-top:0">Admin sign-in</h2>
+    <p class="muted">Enter your <code>ADMIN_API_TOKEN</code>.</p>
+    <input id="token" type="password" placeholder="Admin token" />
+    <div class="err" id="gateErr"></div>
+    <button style="margin-top:14px;width:100%" id="enter">Enter dashboard</button>
+  </div>
+
+  <!-- ORDERS -->
+  <div id="tab-orders" class="wrap" style="display:none">
+    <div class="bar">
+      <button class="ghost" id="refreshOrders">↻ Refresh</button>
+      <span class="muted" id="ordersCount"></span>
+    </div>
+    <table>
+      <thead><tr><th>Order</th><th>Customer</th><th>Items</th><th>Ship to</th><th>Total</th><th>Status</th></tr></thead>
+      <tbody id="ordersRows"></tbody>
+    </table>
+  </div>
+
+  <!-- PRODUCTS -->
+  <div id="tab-products" class="wrap" style="display:none">
+    <div class="card">
+      <h3>Pod pack price (applies to all flavor pods)</h3>
+      <div class="grid" style="max-width:520px">
+        <div class="field"><label>Price ($)</label><input id="podPrice" type="number" step="0.01" /></div>
+        <div class="field"><label>Pack size</label><input id="podSize" type="number" step="1" /></div>
+        <div class="field"><button id="saveSettings">Save pod settings</button></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Add / update a product</h3>
+      <p class="muted" style="margin-top:-6px">Use an existing ID to overwrite it, or a new ID to create a product.</p>
+      <div class="grid">
+        <div class="field"><label>ID (slug)</label><input id="pId" placeholder="bottle-galaxy" /></div>
+        <div class="field"><label>Kind</label>
+          <select id="pKind"><option value="bottle">bottle</option><option value="pod">pod</option><option value="bundle">bundle</option></select>
+        </div>
+        <div class="field"><label>Name</label><input id="pName" placeholder="Boobly Galaxy" /></div>
+        <div class="field"><label>Price ($)</label><input id="pPrice" type="number" step="0.01" placeholder="19.90" /></div>
+        <div class="field"><label>Emoji</label><input id="pEmoji" placeholder="🌌" /></div>
+        <div class="field"><button id="addProduct">Save product</button></div>
+      </div>
+      <p class="muted" style="margin-top:10px">Pods ignore the price field (they use the pod pack price above). For advanced fields (gradient, tagline…) edit the row's <code>data</code> in Supabase.</p>
+      <div class="err" id="prodErr"></div>
+    </div>
+
+    <div class="bar">
+      <button class="ghost" id="refreshProducts">↻ Refresh</button>
+      <label class="muted">Filter:
+        <select id="kindFilter">
+          <option value="all">All kinds</option>
+          <option value="bottle">Bottles</option>
+          <option value="pod">Pods</option>
+          <option value="bundle">Bundles</option>
+        </select>
+      </label>
+      <span class="muted" id="prodCount"></span>
+    </div>
+    <table>
+      <thead><tr><th>Kind</th><th>Image</th><th>ID</th><th>Name</th><th>Price</th><th>Emoji</th><th>Active</th><th></th></tr></thead>
+      <tbody id="prodRows"></tbody>
+    </table>
+  </div>
+
+  <!-- CUSTOMERS -->
+  <div id="tab-customers" class="wrap" style="display:none">
+    <div class="bar">
+      <button class="ghost" id="refreshCustomers">↻ Refresh</button>
+      <span class="muted" id="custCount"></span>
+    </div>
+    <table>
+      <thead><tr><th>Customer</th><th>Orders</th><th>Total spent</th><th>Avg / order</th><th>First</th><th>Last</th><th>Newsletter</th></tr></thead>
+      <tbody id="custRows"></tbody>
+    </table>
+
+    <div class="card" style="margin-top:24px">
+      <h3>Newsletter subscribers <span class="muted" id="subCount"></span></h3>
+      <table>
+        <thead><tr><th>Email</th><th>Joined</th></tr></thead>
+        <tbody id="subRows"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    const STATUSES = ["received","paid","packed","shipped","delivered","cancelled"];
+    let token = sessionStorage.getItem("boobly_admin_token") || "";
+    const $ = (id) => document.getElementById(id);
+    const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
+
+    async function api(path, opts = {}) {
+      const res = await fetch(path, {
+        ...opts,
+        headers: { "Content-Type": "application/json", "X-Admin-Token": token, ...(opts.headers || {}) },
+      });
+      if (res.status === 401) throw new Error("unauthorized");
+      return res;
+    }
+
+    /* ---------- ORDERS ---------- */
+    function addrLine(a) {
+      if (!a || !a.line1) return '<span class="muted">—</span>';
+      return esc([a.line1, a.line2, a.city, a.state, a.postal_code, a.country].filter(Boolean).join(", "));
+    }
+    function itemsLine(items) {
+      if (!items || !items.length) return '<span class="muted">—</span>';
+      return items.map((i) => `${esc(i.name)} ×${esc(i.qty)}`).join("<br>");
+    }
+    function renderOrders(orders) {
+      $("ordersCount").textContent = `${orders.length} order${orders.length === 1 ? "" : "s"}`;
+      $("ordersRows").innerHTML = orders.map((o) => {
+        const c = o.customer || {};
+        const opts = STATUSES.map((s) => `<option value="${s}" ${s===o.status?"selected":""}>${s}</option>`).join("");
+        return `<tr>
+          <td><code>${esc((o.id||"").slice(0,14))}</code><div class="muted">${esc((o.created_at||"").slice(0,10))}</div></td>
+          <td>${esc(c.name)||'<span class="muted">—</span>'}<div class="muted">${esc(c.email)}</div>${c.phone?`<div class="muted">${esc(c.phone)}</div>`:""}</td>
+          <td>${itemsLine(o.items)}</td>
+          <td style="max-width:200px">${addrLine(o.shipping_address)}</td>
+          <td>$${Number(o.total||0).toFixed(2)}</td>
+          <td><span class="pill s-${esc(o.status)}">${esc(o.status)}</span>
+            <div class="row-actions" style="margin-top:8px">
+              <select data-oid="${esc(o.id)}">${opts}</select>
+              <button class="sm" data-osave="${esc(o.id)}">Save</button>
+            </div></td>
+        </tr>`;
+      }).join("");
+      document.querySelectorAll("button[data-osave]").forEach((btn) => {
+        btn.onclick = async () => {
+          const id = btn.getAttribute("data-osave");
+          const sel = document.querySelector(`select[data-oid="${CSS.escape(id)}"]`);
+          btn.textContent = "…";
+          try { await api(`/api/orders/${encodeURIComponent(id)}/status`, { method:"POST", body: JSON.stringify({ status: sel.value }) }); await loadOrders(); }
+          catch (e) { alert("Update failed: " + e.message); btn.textContent = "Save"; }
+        };
+      });
+    }
+    async function loadOrders() { renderOrders(await (await api("/api/orders")).json()); }
+
+    /* ---------- PRODUCTS ---------- */
+    let allProducts = [];
+
+    function applyFilter() {
+      const kind = $("kindFilter").value;
+      renderProducts(kind === "all" ? allProducts : allProducts.filter((p) => p.kind === kind));
+    }
+    $("kindFilter").onchange = applyFilter;
+
+    function renderProducts(rows) {
+      $("prodCount").textContent = `${rows.length} product${rows.length===1?"":"s"}`;
+      $("prodRows").innerHTML = rows.map((p) => {
+        const emoji = (p.data && p.data.emoji) || "";
+        const image = (p.data && p.data.image) || "";
+        const isPod = p.kind === "pod";
+        const thumbStyle = image ? `style="background-image:url('${esc(image)}')"` : "";
+        return `<tr data-id="${esc(p.id)}">
+          <td><span class="pill k-${esc(p.kind)}">${esc(p.kind)}</span></td>
+          <td><div class="thumb-wrap">
+            <div class="thumb-box">
+              <div class="thumb" ${thumbStyle}>${image ? "" : "no img"}</div>
+              ${image ? `<button class="thumb-x" data-pimgdel="${esc(p.id)}" title="Remove image">✕</button>` : ""}
+            </div>
+            <button class="sm ghost" data-pimg="${esc(p.id)}">${image ? "Replace" : "Upload"}</button>
+            <input type="file" accept="image/*" data-pfile="${esc(p.id)}" style="display:none" />
+          </div></td>
+          <td><code>${esc(p.id)}</code></td>
+          <td><input class="cell" data-f="name" value="${esc(p.name)}" /></td>
+          <td>${isPod ? '<span class="muted">pod pack</span>' : `<input class="price" data-f="price" type="number" step="0.01" value="${Number(p.price||0).toFixed(2)}" />`}</td>
+          <td><input class="emoji" data-f="emoji" value="${esc(emoji)}" /></td>
+          <td style="text-align:center"><input type="checkbox" data-f="active" ${p.active?"checked":""} /></td>
+          <td class="row-actions">
+            <button class="sm" data-psave="${esc(p.id)}">Save</button>
+            <button class="sm danger" data-pdel="${esc(p.id)}">✕</button>
+          </td>
+        </tr>`;
+      }).join("");
+
+      // Image upload wiring
+      document.querySelectorAll("button[data-pimg]").forEach((btn) => {
+        btn.onclick = () => document.querySelector(`input[data-pfile="${CSS.escape(btn.getAttribute("data-pimg"))}"]`).click();
+      });
+      document.querySelectorAll("input[data-pfile]").forEach((inp) => {
+        inp.onchange = async () => {
+          const id = inp.getAttribute("data-pfile");
+          if (!inp.files || !inp.files[0]) return;
+          const fd = new FormData();
+          fd.append("image", inp.files[0]);
+          try {
+            // Note: don't set Content-Type — the browser adds the multipart boundary.
+            const res = await fetch(`/api/admin/products/${encodeURIComponent(id)}/image`, {
+              method: "POST", headers: { "X-Admin-Token": token }, body: fd,
+            });
+            if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || res.status);
+            await loadProducts();
+          } catch (e) { alert("Image upload failed: " + e.message); }
+        };
+      });
+      document.querySelectorAll("button[data-pimgdel]").forEach((btn) => {
+        btn.onclick = async () => {
+          const id = btn.getAttribute("data-pimgdel");
+          if (!confirm("Remove this product's image?")) return;
+          try { await api(`/api/admin/products/${encodeURIComponent(id)}/image`, { method: "DELETE" }); await loadProducts(); }
+          catch (e) { alert("Remove failed: " + e.message); }
+        };
+      });
+
+      document.querySelectorAll("button[data-psave]").forEach((btn) => {
+        btn.onclick = async () => {
+          const tr = btn.closest("tr");
+          const id = tr.getAttribute("data-id");
+          const kind = tr.querySelector(".pill").textContent.trim();
+          const g = (f) => tr.querySelector(`[data-f="${f}"]`);
+          const body = {
+            id, kind,
+            name: g("name").value,
+            price: g("price") ? parseFloat(g("price").value || "0") : 0,
+            active: g("active").checked,
+            data: { emoji: g("emoji").value },
+          };
+          btn.textContent = "…";
+          try { await api("/api/admin/products", { method:"POST", body: JSON.stringify(body) }); await loadProducts(); }
+          catch (e) { alert("Save failed: " + e.message); btn.textContent = "Save"; }
+        };
+      });
+      document.querySelectorAll("button[data-pdel]").forEach((btn) => {
+        btn.onclick = async () => {
+          const id = btn.getAttribute("data-pdel");
+          if (!confirm(`Delete product "${id}"?`)) return;
+          try { await api(`/api/admin/products/${encodeURIComponent(id)}`, { method:"DELETE" }); await loadProducts(); }
+          catch (e) { alert("Delete failed: " + e.message); }
+        };
+      });
+    }
+    async function loadProducts() {
+      allProducts = await (await api("/api/admin/products")).json();
+      applyFilter();
+      const s = await (await api("/api/admin/settings")).json();
+      $("podPrice").value = Number(s.pod_pack_price ?? 0).toFixed(2);
+      $("podSize").value = s.pod_pack_size ?? 5;
+    }
+
+    $("addProduct").onclick = async () => {
+      $("prodErr").textContent = "";
+      const body = {
+        id: $("pId").value.trim(),
+        kind: $("pKind").value,
+        name: $("pName").value.trim(),
+        price: parseFloat($("pPrice").value || "0"),
+        active: true,
+        data: { emoji: $("pEmoji").value.trim() },
+      };
+      try {
+        await api("/api/admin/products", { method:"POST", body: JSON.stringify(body) });
+        ["pId","pName","pPrice","pEmoji"].forEach((i) => $(i).value = "");
+        await loadProducts();
+      } catch (e) {
+        const msg = e.message === "unauthorized" ? "Session expired" : e.message;
+        $("prodErr").textContent = "Save failed: " + msg;
+      }
+    };
+    $("saveSettings").onclick = async () => {
+      try {
+        await api("/api/admin/settings", { method:"POST", body: JSON.stringify({
+          pod_pack_price: parseFloat($("podPrice").value || "0"),
+          pod_pack_size: parseInt($("podSize").value || "5", 10),
+        })});
+        await loadProducts();
+      } catch (e) { alert("Save failed: " + e.message); }
+    };
+
+    /* ---------- CUSTOMERS ---------- */
+    const fmtDate = (s) => (s || "").slice(0, 10) || "—";
+    function renderCustomers(rows) {
+      $("custCount").textContent = `${rows.length} customer${rows.length===1?"":"s"}`;
+      $("custRows").innerHTML = rows.map((c) => {
+        const avg = c.orders ? c.total_spent / c.orders : 0;
+        const freq = c.orders >= 3 ? "🔥 " : c.orders === 2 ? "↩︎ " : "";
+        return `<tr>
+          <td>${esc(c.name) || '<span class="muted">—</span>'}<div class="muted">${esc(c.email)}</div></td>
+          <td><b>${freq}${c.orders}</b></td>
+          <td>$${Number(c.total_spent||0).toFixed(2)}</td>
+          <td>$${avg.toFixed(2)}</td>
+          <td>${fmtDate(c.first_order)}</td>
+          <td>${fmtDate(c.last_order)}</td>
+          <td>${c.is_subscriber ? "✅" : "—"}</td>
+        </tr>`;
+      }).join("");
+    }
+    function renderSubscribers(rows) {
+      $("subCount").textContent = `(${rows.length})`;
+      $("subRows").innerHTML = rows.map((s) =>
+        `<tr><td>${esc(s.email)}</td><td>${fmtDate(s.created_at)}</td></tr>`).join("")
+        || '<tr><td colspan="2" class="muted">No subscribers yet.</td></tr>';
+    }
+    async function loadCustomers() {
+      renderCustomers(await (await api("/api/admin/customers")).json());
+      renderSubscribers(await (await api("/api/admin/subscribers")).json());
+    }
+
+    /* ---------- tabs / gate ---------- */
+    function showTab(name) {
+      document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t.dataset.tab === name));
+      $("tab-orders").style.display = name === "orders" ? "block" : "none";
+      $("tab-products").style.display = name === "products" ? "block" : "none";
+      $("tab-customers").style.display = name === "customers" ? "block" : "none";
+      if (name === "customers") loadCustomers();
+    }
+    document.querySelectorAll(".tab").forEach((t) => t.onclick = () => showTab(t.dataset.tab));
+    $("refreshOrders").onclick = loadOrders;
+    $("refreshProducts").onclick = loadProducts;
+    $("refreshCustomers").onclick = loadCustomers;
+
+    async function enter() {
+      token = $("token").value.trim();
+      if (!token) return;
+      try {
+        await loadOrders();
+        await loadProducts();
+        sessionStorage.setItem("boobly_admin_token", token);
+        $("gate").style.display = "none";
+        $("tabs").style.display = "flex";
+        showTab("orders");
+      } catch (e) { $("gateErr").textContent = "Invalid token."; }
+    }
+    $("enter").onclick = enter;
+    $("token").addEventListener("keydown", (e) => { if (e.key === "Enter") enter(); });
+    $("logout").onclick = () => { sessionStorage.removeItem("boobly_admin_token"); location.reload(); };
+    if (token) { $("token").value = token; enter(); }
+  </script>
+</body>
+</html>

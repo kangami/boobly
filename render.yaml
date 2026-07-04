@@ -1,0 +1,39 @@
+# Render Blueprint — deploys the Boobly Flask API.
+# In Render: New → Blueprint → connect this repo. Fill the `sync: false` secrets
+# in the dashboard (they are NOT stored in git).
+services:
+  - type: web
+    name: boobly-api
+    runtime: python
+    rootDir: backend
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    # One worker keeps the in-process SSE broker + catalog cache consistent;
+    # threads handle the long-lived event streams. Scale via Redis pub/sub later.
+    startCommand: gunicorn app:app --workers 1 --threads 8 --timeout 120 --bind 0.0.0.0:$PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      # Restrict the browser app that may call the API (your Vercel URL).
+      - key: CORS_ORIGINS
+        sync: false
+      # Where Stripe sends the shopper back (your Vercel URL, no trailing slash).
+      - key: PUBLIC_BASE_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: ADMIN_API_TOKEN
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: SHIP_COUNTRIES
+        sync: false
