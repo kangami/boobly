@@ -26,8 +26,10 @@ ORDER_STATUSES = ["received", "paid", "packed", "shipped", "delivered", "cancell
 STORAGE_BUCKET = "boobly-media"
 ALLOWED_IMAGE_EXT = {"png", "jpg", "jpeg", "webp", "gif"}
 # Comma-separated allowed origins for the browser app (e.g. your Vercel URL).
-# Defaults to "*" so local dev keeps working.
-CORS_ORIGINS = [o.strip() for o in os.environ.get("CORS_ORIGINS", "*").split(",") if o.strip()]
+# Empty or unset -> allow all ("*"). Trailing slashes are stripped so a value
+# like "https://app.vercel.app/" still matches the browser Origin (no slash).
+_cors_raw = (os.environ.get("CORS_ORIGINS") or "").strip() or "*"
+CORS_ORIGINS = [o.strip().rstrip("/") for o in _cors_raw.split(",") if o.strip()] or ["*"]
 
 app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": CORS_ORIGINS}})
