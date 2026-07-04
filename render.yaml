@@ -37,3 +37,5 @@ services:
         sync: false
       - key: SHIP_COUNTRIES
         sync: false
+      - key: STRIPE_CURRENCY
+        sync: false

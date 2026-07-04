@@ -8,10 +8,12 @@ import os
 SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY")
 WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET")
 PUBLIC_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "http://localhost:5173")
+# Checkout currency (ISO 4217, lowercase), e.g. cad, usd, eur.
+CURRENCY = os.environ.get("STRIPE_CURRENCY", "cad").lower()
 # Countries Boobly will ship to (Stripe collects + validates the address).
 SHIP_COUNTRIES = [
     c.strip().upper()
-    for c in os.environ.get("SHIP_COUNTRIES", "US,CA,GB,IE,AU,NZ").split(",")
+    for c in os.environ.get("SHIP_COUNTRIES", "CA").split(",")
     if c.strip()
 ]
 
@@ -51,7 +53,7 @@ def create_checkout_session(clean_items, total, customer):
     line_items = [
         {
             "price_data": {
-                "currency": "usd",
+                "currency": CURRENCY,
                 "unit_amount": max(0, round(float(it["price"]) * 100)),
                 "product_data": {
                     "name": it.get("name") or "Boobly item",
