@@ -40,6 +40,7 @@ export default function CartDrawer() {
       {open && (
         <>
           <motion.div
+            key="cart-overlay"
             className="drawer-overlay"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -47,6 +48,7 @@ export default function CartDrawer() {
             onClick={close}
           />
           <motion.aside
+            key="cart-drawer"
             className="drawer"
             initial={{ x: '100%' }}
             animate={{ x: 0 }}

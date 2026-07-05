@@ -34,11 +34,13 @@ export default function TrackOrder({ open, onClose }) {
       {open && (
         <>
           <motion.div
+            key="track-overlay"
             className="drawer-overlay"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             onClick={close}
           />
           <motion.div
+            key="track-modal"
             className="track-modal"
             initial={{ opacity: 0, y: 30, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
