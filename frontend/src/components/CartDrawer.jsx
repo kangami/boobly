@@ -104,32 +104,41 @@ export default function CartDrawer() {
                       />
                     </form>
                   )}
-                  {items.map((i) => (
-                    <motion.div layout key={i.key} className="cart-item">
-                      <div
-                        className="cart-thumb"
-                        style={
-                          i.image
-                            ? { backgroundImage: `url(${i.image})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-                            : { background: i.color || '#a05cfa' }
-                        }
+                  <AnimatePresence mode="popLayout" initial={false}>
+                    {items.map((i) => (
+                      <motion.div
+                        layout
+                        key={i.key}
+                        className="cart-item"
+                        initial={{ opacity: 0, x: 30 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: 40, transition: { duration: 0.18 } }}
                       >
-                        {!i.image && (i.emoji || '💧')}
-                      </div>
-                      <div className="info">
-                        <b>{i.name}</b>
-                        <span>${i.price.toFixed(2)} each</span>
-                      </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <div className="qty">
-                          <button onClick={() => dec(i.key)}>−</button>
-                          <b>{i.qty}</b>
-                          <button onClick={() => inc(i.key)}>+</button>
+                        <div
+                          className="cart-thumb"
+                          style={
+                            i.image
+                              ? { backgroundImage: `url(${i.image})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                              : { background: i.color || '#a05cfa' }
+                          }
+                        >
+                          {!i.image && (i.emoji || '💧')}
                         </div>
-                        <button className="cart-remove" onClick={() => remove(i.key)}>remove</button>
-                      </div>
-                    </motion.div>
-                  ))}
+                        <div className="info">
+                          <b>{i.name}</b>
+                          <span>${Number(i.price || 0).toFixed(2)} each</span>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <div className="qty">
+                            <button onClick={() => dec(i.key)}>−</button>
+                            <b>{i.qty}</b>
+                            <button onClick={() => inc(i.key)}>+</button>
+                          </div>
+                          <button className="cart-remove" onClick={() => remove(i.key)}>remove</button>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
                 </div>
 
                 <div className="drawer-foot">
