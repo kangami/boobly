@@ -284,6 +284,7 @@ def subscribe():
     if "@" not in email or "." not in email.split("@")[-1]:
         return jsonify({"error": "Please enter a valid email"}), 400
     supabase_client.add_subscriber(email)
+    email_client.send_welcome(email)
     return jsonify({"ok": True}), 201
 
 

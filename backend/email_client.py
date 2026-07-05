@@ -99,3 +99,18 @@ def send_status_update(order):
     </div>
     """
     return _send(to, f"Boobly order update: {status}", html)
+
+
+def send_welcome(email):
+    """Welcome + 10% code when someone joins the newsletter."""
+    html = """
+    <div style="font-family:system-ui,Arial,sans-serif;max-width:520px;margin:auto;color:#1a1330">
+      <h1 style="font-size:26px">Welcome to the Boobly squad 🌈</h1>
+      <p>You're in! Here's <b>10% off</b> your first bottle — use code
+        <span style="background:#ffe6f2;color:#c2185b;padding:3px 10px;border-radius:8px;font-weight:800">SQUAD10</span>
+        at checkout.</p>
+      <p>12 sugar-free aroma pods. Zero sugar, all fun.</p>
+      <p style="opacity:.7;margin-top:24px">Stay Fresh, Stay You 💧</p>
+    </div>
+    """
+    return _send(email, "Welcome to Boobly — here's your 10% 🎉", html)
