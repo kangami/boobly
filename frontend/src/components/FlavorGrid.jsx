@@ -47,7 +47,7 @@ export default function FlavorGrid({ flavors, podPrice, podSize, onToast }) {
       <div className="wrap">
         <div className="section-head">
           <div className="eyebrow">The Flavor Lab</div>
-          <h2>Pick your aroma pods 🧪</h2>
+          <h2>Pick your aroma pods</h2>
           <p>Each pack has {podSize} cartridges. Clip one in, swap anytime, taste the rainbow.</p>
         </div>
 
