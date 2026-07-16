@@ -219,9 +219,16 @@ def stripe_webhook():
             print(f"[webhook] could not fetch line items: {exc}")
 
         # Delivery details Stripe collected on its hosted page.
-        ship = session.get("shipping_details") or {}
+        # Newer Stripe API versions (2025+) nest the collected shipping address
+        # under `collected_information.shipping_details` instead of the top-level
+        # `shipping_details`, so check both for forward/backward compatibility.
+        collected = session.get("collected_information") or {}
+        ship = collected.get("shipping_details") or session.get("shipping_details") or {}
         ship_addr = ship.get("address") or {}
         details = session.get("customer_details") or {}
+        # Fall back to the billing address when no separate shipping address exists.
+        if not ship_addr:
+            ship_addr = details.get("address") or {}
 
         order = supabase_client.save_order({
             "id": session_id,
