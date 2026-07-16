@@ -4,6 +4,10 @@ import { useCart } from '../context/CartContext.jsx'
 import { placeOrder, startCheckout } from '../api.js'
 
 const CUSTOMER_KEY = 'boobly_customer'
+// Mirrors the backend (stripe_client.py). The exact fee is charged on Stripe's
+// checkout page; this is just the storefront hint before redirect.
+const DELIVERY_FEE = 8.95
+const FREE_SHIP_THRESHOLD = 65
 
 // Load the shopper's saved name/email (empty on their first visit).
 function loadCustomer() {
@@ -165,8 +169,21 @@ export default function CartDrawer() {
                 </div>
 
                 <div className="drawer-foot">
+                  <div className="drawer-delivery">
+                    <span>Delivery</span>
+                    {total >= FREE_SHIP_THRESHOLD ? (
+                      <b style={{ color: '#12b76a' }}>Free 🎉</b>
+                    ) : (
+                      <b>from ${DELIVERY_FEE.toFixed(2)}</b>
+                    )}
+                  </div>
+                  {total < FREE_SHIP_THRESHOLD && (
+                    <p className="drawer-ship-hint">
+                      Add ${(FREE_SHIP_THRESHOLD - total).toFixed(2)} more for free delivery!
+                    </p>
+                  )}
                   <div className="drawer-total">
-                    <span>Total</span>
+                    <span>Subtotal</span>
                     <b>${total.toFixed(2)}</b>
                   </div>
                   {stage === 'cart' ? (

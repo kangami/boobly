@@ -749,6 +749,9 @@ img { display: block; max-width: 100%; }
 .qty b { min-width: 20px; text-align: center; }
 .cart-remove { background: none; color: var(--magenta); font-size: 13px; font-weight: 600; }
 .drawer-foot { padding: 22px 24px; border-top: 1px solid rgba(0,0,0,0.07); }
+.drawer-delivery { display: flex; justify-content: space-between; align-items: baseline; font-size: 15px; opacity: 0.85; margin-bottom: 4px; }
+.drawer-delivery b { font-weight: 700; }
+.drawer-ship-hint { margin: 0 0 12px; font-size: 13px; color: #a05cfa; font-weight: 600; }
 .drawer-total { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 16px; }
 .drawer-total b { font-family: var(--font-head); font-size: 30px; }
 .drawer-foot .btn { width: 100%; justify-content: center; }
