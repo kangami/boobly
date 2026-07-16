@@ -16,6 +16,10 @@ SHIP_COUNTRIES = [
     for c in os.environ.get("SHIP_COUNTRIES", "CA").split(",")
     if c.strip()
 ]
+# Delivery fee (in currency units) applied to orders below the free-shipping
+# threshold. Orders at or above the threshold ship free.
+DELIVERY_FEE = float(os.environ.get("DELIVERY_FEE", "8.95"))
+FREE_SHIP_THRESHOLD = float(os.environ.get("FREE_SHIP_THRESHOLD", "65"))
 
 _stripe = None
 
@@ -38,6 +42,47 @@ def _get():
 
 def is_live():
     return _get() is not None
+
+
+def _rate(name, amount, description, min_days, max_days):
+    """Build one Stripe shipping_rate_data entry."""
+    return {
+        "shipping_rate_data": {
+            "type": "fixed_amount",
+            "fixed_amount": {"amount": max(0, round(amount * 100)), "currency": CURRENCY},
+            "display_name": name,
+            "delivery_estimate": {
+                "minimum": {"unit": "business_day", "value": min_days},
+                "maximum": {"unit": "business_day", "value": max_days},
+            },
+            "metadata": {"description": description},
+        }
+    }
+
+
+def _shipping_options(total):
+    """Delivery methods offered at checkout.
+
+    Orders at/above FREE_SHIP_THRESHOLD ship free; smaller orders pay the
+    delivery fee and choose between Standard and P.O. Box delivery.
+    """
+    if float(total or 0) >= FREE_SHIP_THRESHOLD:
+        return [_rate("Free Delivery", 0, "Free shipping on orders over "
+                      f"${FREE_SHIP_THRESHOLD:.0f}", 1, 3)]
+    return [
+        _rate(
+            "Standard Delivery", DELIVERY_FEE,
+            "Receive your order in 1-3 business days. Orders placed after 4PM "
+            "(EST) or on weekends are processed the next business day.",
+            1, 3,
+        ),
+        _rate(
+            "P.O. Box Delivery", DELIVERY_FEE,
+            "For P.O. Box addresses. Delivery in 1-3 business days in metro "
+            "areas, 2-4 business days elsewhere.",
+            1, 4,
+        ),
+    ]
 
 
 def create_checkout_session(clean_items, total, customer):
@@ -71,6 +116,7 @@ def create_checkout_session(clean_items, total, customer):
         customer_email=(customer or {}).get("email") or None,
         # Collect a validated delivery address + phone on Stripe's hosted page.
         shipping_address_collection={"allowed_countries": SHIP_COUNTRIES},
+        shipping_options=_shipping_options(total),
         phone_number_collection={"enabled": True},
         success_url=f"{PUBLIC_BASE_URL}/?checkout=success&session_id={{CHECKOUT_SESSION_ID}}",
         cancel_url=f"{PUBLIC_BASE_URL}/?checkout=cancel",
