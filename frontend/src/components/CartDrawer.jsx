@@ -3,10 +3,31 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useCart } from '../context/CartContext.jsx'
 import { placeOrder, startCheckout } from '../api.js'
 
+const CUSTOMER_KEY = 'boobly_customer'
+
+// Load the shopper's saved name/email (empty on their first visit).
+function loadCustomer() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(CUSTOMER_KEY))
+    return { name: saved?.name || '', email: saved?.email || '' }
+  } catch {
+    return { name: '', email: '' }
+  }
+}
+
+function saveCustomer({ name, email }) {
+  try {
+    localStorage.setItem(CUSTOMER_KEY, JSON.stringify({ name, email }))
+  } catch {
+    /* private mode / storage full — pre-fill just won't persist */
+  }
+}
+
 export default function CartDrawer() {
   const { items, open, setOpen, count, total, inc, dec, remove, clear } = useCart()
   const [stage, setStage] = useState('cart') // cart | checkout | done
-  const [form, setForm] = useState({ name: '', email: '' })
+  // Pre-fill name/email from the shopper's last checkout so they don't retype it.
+  const [form, setForm] = useState(loadCustomer)
   const [busy, setBusy] = useState(false)
 
   function close() {
@@ -17,6 +38,8 @@ export default function CartDrawer() {
   async function submit(e) {
     e.preventDefault()
     setBusy(true)
+    // Remember who they are for next time (they can still edit it above).
+    saveCustomer(form)
     const payload = {
       items: items.map((i) => ({ id: i.id, name: i.name, type: i.type, qty: i.qty, price: i.price })),
       customer: form,
