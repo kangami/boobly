@@ -4,8 +4,14 @@ If RESEND_API_KEY is unset, emails are logged instead of sent so the app keeps
 working in local/demo mode. Get a key at https://resend.com (free tier is fine).
 """
 import os
+from html import escape
 
 import httpx
+
+
+def _e(value):
+    """HTML-escape any user-provided value before it lands in email markup."""
+    return escape(str(value if value is not None else ""))
 
 RESEND_API_KEY = os.environ.get("RESEND_API_KEY")
 # Must be a domain you've verified in Resend. The onboarding@resend.dev sender
@@ -119,7 +125,7 @@ def _shell(name, heading, body_html):
 
 def _items_table(items):
     rows = "".join(
-        f"<tr><td style='padding:6px 0'>{i.get('name','Item')} × {i.get('qty',1)}</td>"
+        f"<tr><td style='padding:6px 0'>{_e(i.get('name','Item'))} × {_e(i.get('qty',1))}</td>"
         f"<td style='padding:6px 0;text-align:right'>${float(i.get('price',0)) * int(i.get('qty',1)):.2f}</td></tr>"
         for i in items
     )
@@ -130,15 +136,15 @@ def send_order_confirmation(order):
     """Email the shopper a receipt for a placed order."""
     customer = order.get("customer") or {}
     to = customer.get("email")
-    name = _first_name(customer.get("name"), to)
+    name = _e(_first_name(customer.get("name"), to))
     addr = order.get("shipping_address") or {}
     ship_html = ""
     if addr.get("line1"):
         ship_html = (
             "<p style='margin:18px 0 4px;font-weight:600'>Shipping to</p>"
-            f"<p style='margin:0;opacity:.75;font-size:15px'>{addr.get('line1','')} {addr.get('line2','')}<br>"
-            f"{addr.get('city','')} {addr.get('state','')} {addr.get('postal_code','')}<br>"
-            f"{addr.get('country','')}</p>"
+            f"<p style='margin:0;opacity:.75;font-size:15px'>{_e(addr.get('line1',''))} {_e(addr.get('line2',''))}<br>"
+            f"{_e(addr.get('city',''))} {_e(addr.get('state',''))} {_e(addr.get('postal_code',''))}<br>"
+            f"{_e(addr.get('country',''))}</p>"
         )
 
     body = f"""
@@ -147,7 +153,7 @@ def send_order_confirmation(order):
       <hr style="border:none;border-top:1px solid #eee;margin:14px 0">
       <p style="text-align:right;font-size:17px;margin:0"><b>Total: ${float(order.get('total',0)):.2f}</b></p>
       {ship_html}
-      <p style="margin:18px 0 0;font-size:13px;opacity:.7">Order ref: <code>{order.get('id','')}</code></p>
+      <p style="margin:18px 0 0;font-size:13px;opacity:.7">Order ref: <code>{_e(order.get('id',''))}</code></p>
     """
     html = _shell(name, "Thanks for your order! 🌈", body)
     return _send(to, "Your Boobly order is confirmed 🎉", html)
@@ -157,17 +163,17 @@ def send_status_update(order):
     """Notify the shopper when their order status changes (e.g. shipped)."""
     customer = order.get("customer") or {}
     to = customer.get("email")
-    name = _first_name(customer.get("name"), to)
+    name = _e(_first_name(customer.get("name"), to))
     status = order.get("status", "updated")
     pretty = {
         "packed": "is packed and getting ready to ship 📦",
         "shipped": "is on its way to you 🚚",
         "delivered": "has been delivered — enjoy! 🎉",
         "cancelled": "has been cancelled. If this is a surprise, just reply to this email.",
-    }.get(status, f"status is now: {status}")
+    }.get(status, f"status is now: {_e(status)}")
 
     body = f"""
-      <p style="margin:0;font-size:15px">Your Boobly order <code>{order.get('id','')}</code> {pretty}</p>
+      <p style="margin:0;font-size:15px">Your Boobly order <code>{_e(order.get('id',''))}</code> {pretty}</p>
     """
     html = _shell(name, "Order update 🚚", body)
     return _send(to, f"Boobly order update: {status}", html)
@@ -175,7 +181,7 @@ def send_status_update(order):
 
 def send_welcome(email):
     """Welcome + 10% code when someone joins the newsletter."""
-    name = _first_name(None, email)
+    name = _e(_first_name(None, email))
     body = """
       <p style="margin:0 0 14px;font-size:15px">You're in! Here's <b>10% off</b> your first bottle — use code
         <span style="background:#ffe6f2;color:#c2185b;padding:3px 10px;border-radius:8px;font-weight:800">SQUAD10</span>

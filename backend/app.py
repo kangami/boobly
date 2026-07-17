@@ -156,6 +156,13 @@ def events():
 
 @app.post("/api/orders")
 def create_order():
+    # When Stripe is live, real orders MUST come through Checkout + the signed
+    # webhook. This simulated-order path stays only for the offline/demo mode;
+    # leaving it open in production would let anyone create unpaid orders and
+    # trigger confirmation emails to arbitrary addresses.
+    if stripe_client.is_live():
+        return jsonify({"error": "Use checkout", "offline": False}), 403
+
     data = request.get_json(silent=True) or {}
     try:
         clean_items, total, customer = _validate_cart(data)
