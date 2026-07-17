@@ -30,15 +30,18 @@ export async function startCheckout(payload) {
     })
     if (res.status === 503) return { offline: true } // Stripe not configured
     if (!res.ok) {
+      // Backend reachable but the request failed (e.g. Stripe error): surface it
+      // so the shopper can retry — do NOT fake a success or clear their cart.
       const err = await res.json().catch(() => ({}))
-      throw new Error(err.error || 'Checkout failed')
+      return { error: err.error || 'Checkout failed. Please try again.' }
     }
     const { url } = await res.json()
-    if (!url) throw new Error('No checkout URL')
+    if (!url) return { error: 'Checkout failed. Please try again.' }
     window.location.href = url
     return { redirected: true }
   } catch (e) {
-    console.warn('[boobly] checkout API offline, simulating success')
+    // Network error / backend unreachable → fall back to the demo flow.
+    console.warn('[boobly] checkout API unreachable, using demo flow')
     return { offline: true }
   }
 }

@@ -767,6 +767,7 @@ img { display: block; max-width: 100%; }
 .drawer-delivery { display: flex; justify-content: space-between; align-items: baseline; font-size: 15px; opacity: 0.85; margin-bottom: 4px; }
 .drawer-delivery b { font-weight: 700; }
 .drawer-ship-hint { margin: 0 0 12px; font-size: 13px; color: #a05cfa; font-weight: 600; }
+.checkout-err { margin: 0 0 12px; font-size: 13.5px; color: #d33; font-weight: 600; background: #fff0f0; border: 1px solid #ffd4d4; border-radius: 12px; padding: 10px 12px; }
 .drawer-total { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 16px; }
 .drawer-total b { font-family: var(--font-head); font-size: 30px; }
 .drawer-foot .btn { width: 100%; justify-content: center; }

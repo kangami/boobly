@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useCart } from '../context/CartContext.jsx'
 import { placeOrder, startCheckout } from '../api.js'
@@ -33,6 +33,17 @@ export default function CartDrawer() {
   // Pre-fill name/email from the shopper's last checkout so they don't retype it.
   const [form, setForm] = useState(loadCustomer)
   const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  // Never leave the drawer stuck on "Placing order…" — reset the transient
+  // state whenever it (re)opens, including when restored from the back/forward
+  // cache after returning from Stripe.
+  useEffect(() => {
+    if (open) {
+      setBusy(false)
+      setError('')
+    }
+  }, [open])
 
   function close() {
     setOpen(false)
@@ -41,25 +52,37 @@ export default function CartDrawer() {
 
   async function submit(e) {
     e.preventDefault()
+    if (busy) return // guard against double-submit
     setBusy(true)
-    // Remember who they are for next time (they can still edit it above).
-    saveCustomer(form)
-    const payload = {
-      items: items.map((i) => ({ id: i.id, name: i.name, type: i.type, qty: i.qty, price: i.price, variant: i.variant || null })),
-      customer: form,
+    setError('')
+    try {
+      // Remember who they are for next time (they can still edit it above).
+      saveCustomer(form)
+      const payload = {
+        items: items.map((i) => ({ id: i.id, name: i.name, type: i.type, qty: i.qty, price: i.price, variant: i.variant || null })),
+        customer: form,
+      }
+
+      // Try real Stripe Checkout first. On success the browser redirects away to
+      // Stripe's hosted page and the cart is cleared on the success return (App.jsx).
+      const result = await startCheckout(payload)
+      if (result.redirected) return // navigating to Stripe; nothing more to do here
+      if (result.error) {
+        // Real failure — keep the cart intact so they can retry.
+        setError(result.error)
+        return
+      }
+
+      // Genuine offline/demo mode only (backend unreachable / Stripe not set up).
+      await placeOrder(payload)
+      setStage('done')
+      clear()
+      window.boobBurst?.(window.innerWidth - 180, 120)
+    } finally {
+      // Always re-enable the button, even on the redirect path (harmless if we
+      // navigate away, essential if the user comes back).
+      setBusy(false)
     }
-
-    // Try real Stripe Checkout first. On success the browser redirects away to
-    // Stripe's hosted page and the cart is cleared on the success return (App.jsx).
-    const result = await startCheckout(payload)
-    if (result.redirected) return // navigating to Stripe; nothing more to do here
-
-    // Stripe not configured / offline → keep the demo flow working.
-    await placeOrder(payload)
-    setBusy(false)
-    setStage('done')
-    clear()
-    window.boobBurst?.(window.innerWidth - 180, 120)
   }
 
   return (
@@ -186,6 +209,9 @@ export default function CartDrawer() {
                     <span>Subtotal</span>
                     <b>${total.toFixed(2)}</b>
                   </div>
+                  {stage === 'checkout' && error && (
+                    <p className="checkout-err">{error}</p>
+                  )}
                   {stage === 'cart' ? (
                     <button className="btn btn-primary" onClick={() => setStage('checkout')}>
                       Checkout →
