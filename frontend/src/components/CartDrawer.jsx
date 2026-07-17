@@ -45,7 +45,7 @@ export default function CartDrawer() {
     // Remember who they are for next time (they can still edit it above).
     saveCustomer(form)
     const payload = {
-      items: items.map((i) => ({ id: i.id, name: i.name, type: i.type, qty: i.qty, price: i.price })),
+      items: items.map((i) => ({ id: i.id, name: i.name, type: i.type, qty: i.qty, price: i.price, variant: i.variant || null })),
       customer: form,
     }
 

@@ -60,9 +60,19 @@ def _validate_cart(data):
 
         price = info["price"]  # authoritative server price
         total += qty * price
+
+        name = info["name"]
+        variant_id = (it.get("variant") or {}).get("id") if isinstance(it.get("variant"), dict) else it.get("variant")
+        # For bottles, trust the colour label from the catalog (not the client)
+        # and fold it into the line name so it shows on the receipt/order.
+        if it.get("type") == "bottle" and variant_id:
+            label = catalog_store.variant_label(it.get("id"), variant_id)
+            if label:
+                name = f"{name} — {label}"
+
         clean_items.append({
             "id": it.get("id"),
-            "name": info["name"],
+            "name": name,
             "type": it.get("type"),
             "qty": qty,
             "price": price,
@@ -445,6 +455,45 @@ def admin_delete_image(pid):
         return jsonify({"error": str(err)}), 400
     _broadcast_catalog()
     return jsonify({"ok": True, "product": row})
+
+
+# --- Colour variants (bottles) ---------------------------------------------
+@app.post("/api/admin/products/<pid>/variants")
+@require_admin
+def admin_upsert_variant(pid):
+    """Create or update a colour variant (id, label, color) on a bottle."""
+    data = request.get_json(silent=True) or {}
+    try:
+        row = catalog_store.upsert_variant(pid, data)
+    except ValueError as err:
+        return jsonify({"error": str(err)}), 400
+    _broadcast_catalog()
+    return jsonify({"ok": True, "product": row})
+
+
+@app.delete("/api/admin/products/<pid>/variants/<vid>")
+@require_admin
+def admin_delete_variant(pid, vid):
+    try:
+        row = catalog_store.delete_variant(pid, vid)
+    except ValueError as err:
+        return jsonify({"error": str(err)}), 400
+    _broadcast_catalog()
+    return jsonify({"ok": True, "product": row})
+
+
+@app.post("/api/admin/products/<pid>/variants/<vid>/image")
+@require_admin
+def admin_upload_variant_image(pid, vid):
+    if "image" not in request.files:
+        return jsonify({"error": "No image file (field name must be 'image')"}), 400
+    try:
+        url = _store_image(f"{pid}-{vid}", request.files["image"])
+        row = catalog_store.set_variant_image(pid, vid, url)
+    except ValueError as err:
+        return jsonify({"error": str(err)}), 400
+    _broadcast_catalog()
+    return jsonify({"ok": True, "url": url, "product": row})
 
 
 @app.get("/api/uploads/<path:filename>")

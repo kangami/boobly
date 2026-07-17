@@ -13,7 +13,8 @@ import supabase_client
 
 # kind -> which extra fields live in the jsonb `data` blob
 _DATA_FIELDS = {
-    "bottle": ("tagline", "color", "gradient", "capacity_ml", "emoji"),
+    # `variants` holds the per-colour options: [{id, label, color, image}].
+    "bottle": ("tagline", "color", "gradient", "capacity_ml", "emoji", "variants"),
     "pod": ("emoji", "notes", "color", "gradient", "family", "caffeine", "vitamins"),
     "bundle": ("emoji", "desc", "bottle_count", "pod_packs", "compare_at", "badge"),
 }
@@ -253,6 +254,85 @@ def clear_product_image(pid):
     row = {**existing, "data": data}
     row.pop("updated_at", None)
     return _persist_product(row)
+
+
+# --------------------------------------------------------------------------- #
+# Colour variants (bottles) — each is {id, label, color, image}
+# --------------------------------------------------------------------------- #
+def _variants_of(row):
+    return list((row.get("data") or {}).get("variants") or [])
+
+
+def _save_variants(existing, variants):
+    data = {**(existing.get("data") or {}), "variants": variants}
+    row = {**existing, "data": data}
+    row.pop("updated_at", None)
+    return _persist_product(row)
+
+
+def upsert_variant(pid, variant):
+    """Add or update one colour variant on a bottle. Returns the stored row."""
+    existing = get_product(pid)
+    if existing is None:
+        raise ValueError("product not found")
+    vid = (variant.get("id") or "").strip()
+    label = (variant.get("label") or "").strip()
+    if not vid or not label:
+        raise ValueError("variant id and label are required")
+    variants = _variants_of(existing)
+    for v in variants:
+        if v.get("id") == vid:
+            v["label"] = label
+            v["color"] = variant.get("color", v.get("color", ""))
+            if "image" in variant:
+                v["image"] = variant["image"]
+            break
+    else:
+        variants.append({
+            "id": vid,
+            "label": label,
+            "color": variant.get("color", ""),
+            "image": variant.get("image", ""),
+        })
+    return _save_variants(existing, variants)
+
+
+def set_variant_image(pid, vid, url):
+    """Attach an uploaded image URL to one variant. Returns the stored row."""
+    existing = get_product(pid)
+    if existing is None:
+        raise ValueError("product not found")
+    variants = _variants_of(existing)
+    for v in variants:
+        if v.get("id") == vid:
+            v["image"] = url
+            break
+    else:
+        raise ValueError("variant not found")
+    return _save_variants(existing, variants)
+
+
+def delete_variant(pid, vid):
+    """Remove one colour variant from a bottle. Returns the stored row."""
+    existing = get_product(pid)
+    if existing is None:
+        raise ValueError("product not found")
+    variants = [v for v in _variants_of(existing) if v.get("id") != vid]
+    return _save_variants(existing, variants)
+
+
+def variant_label(pid, vid):
+    """The display label of a bottle's variant, or None if it doesn't exist.
+
+    Used at checkout to trust the colour name server-side rather than the client.
+    """
+    row = get_product(pid)
+    if row is None:
+        return None
+    for v in _variants_of(row):
+        if v.get("id") == vid:
+            return v.get("label") or None
+    return None
 
 
 def delete_product(pid):

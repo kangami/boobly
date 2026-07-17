@@ -47,6 +47,20 @@
     .thumb-box { position:relative; width:70px; }
     .thumb-x { position:absolute; top:-7px; right:-7px; width:22px; height:22px; padding:0; border-radius:50%;
       background:#e11d48; color:#fff; font-size:12px; line-height:22px; text-align:center; box-shadow:0 2px 6px rgba(0,0,0,.3); }
+    /* colour-variant editor */
+    tr.vrow > td { background:#faf9fe; padding:12px 16px; }
+    .variants { display:flex; flex-direction:column; gap:10px; }
+    .vtitle { font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:#888; }
+    .vlist { display:flex; flex-wrap:wrap; gap:14px; }
+    .vitem { display:flex; align-items:center; gap:8px; background:#fff; border:1px solid #eee; border-radius:12px; padding:8px 10px; }
+    .vswatch { width:22px; height:22px; border-radius:50%; border:2px solid #fff; box-shadow:0 0 0 1px rgba(0,0,0,.15); }
+    .vthumb { width:44px; height:44px; border-radius:8px; background:#f0eef6 center/contain no-repeat; display:grid; place-items:center; font-size:10px; color:#bbb; }
+    .vmeta { display:flex; flex-direction:column; line-height:1.2; }
+    .vmeta code { font-size:11px; color:#999; }
+    .vadd { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+    .vin { padding:8px 10px; border:1px solid #ddd; border-radius:8px; font-size:13px; }
+    .vcolor { width:40px; height:36px; padding:2px; border:1px solid #ddd; border-radius:8px; background:#fff; }
+    .sm.ghost { background:#eee; color:#333; }
   </style>
 </head>
 <body>
@@ -209,6 +223,35 @@
     }
     $("kindFilter").onchange = applyFilter;
 
+    // Colour-variant editor shown under each bottle row.
+    function variantsPanel(p) {
+      const vs = (p.data && p.data.variants) || [];
+      const items = vs.map((v) => {
+        const key = `${p.id}|${v.id}`;
+        const thumb = v.image ? `style="background-image:url('${esc(v.image)}')"` : "";
+        return `<div class="vitem">
+          <span class="vswatch" style="background:${esc(v.color || '#ccc')}"></span>
+          <div class="vthumb" ${thumb}>${v.image ? "" : "no img"}</div>
+          <div class="vmeta"><b>${esc(v.label)}</b><code>${esc(v.id)}</code></div>
+          <button class="sm ghost" data-vimg="${esc(key)}">${v.image ? "Replace" : "Upload"}</button>
+          <input type="file" accept="image/*" data-vfile="${esc(key)}" style="display:none" />
+          <button class="sm danger" data-vdel="${esc(key)}">✕</button>
+        </div>`;
+      }).join("") || '<span class="muted">No colors yet — add one below.</span>';
+      return `<tr class="vrow"><td colspan="8">
+        <div class="variants">
+          <b class="vtitle">🎨 Colors</b>
+          <div class="vlist">${items}</div>
+          <div class="vadd">
+            <input class="vin" data-vnew="id" placeholder="id (e.g. lime)" />
+            <input class="vin" data-vnew="label" placeholder="Label (e.g. Lime)" />
+            <input type="color" class="vcolor" data-vnew="color" value="#a05cfa" />
+            <button class="sm" data-vadd="${esc(p.id)}">+ Add color</button>
+          </div>
+        </div>
+      </td></tr>`;
+    }
+
     function renderProducts(rows) {
       $("prodCount").textContent = `${rows.length} product${rows.length===1?"":"s"}`;
       $("prodRows").innerHTML = rows.map((p) => {
@@ -216,6 +259,7 @@
         const image = (p.data && p.data.image) || "";
         const isPod = p.kind === "pod";
         const thumbStyle = image ? `style="background-image:url('${esc(image)}')"` : "";
+        const vpanel = p.kind === "bottle" ? variantsPanel(p) : "";
         return `<tr data-id="${esc(p.id)}">
           <td><span class="pill k-${esc(p.kind)}">${esc(p.kind)}</span></td>
           <td><div class="thumb-wrap">
@@ -235,7 +279,7 @@
             <button class="sm" data-psave="${esc(p.id)}">Save</button>
             <button class="sm danger" data-pdel="${esc(p.id)}">✕</button>
           </td>
-        </tr>`;
+        </tr>${vpanel}`;
       }).join("");
 
       // Image upload wiring
@@ -263,6 +307,45 @@
           const id = btn.getAttribute("data-pimgdel");
           if (!confirm("Remove this product's image?")) return;
           try { await api(`/api/admin/products/${encodeURIComponent(id)}/image`, { method: "DELETE" }); await loadProducts(); }
+          catch (e) { alert("Remove failed: " + e.message); }
+        };
+      });
+
+      // Colour-variant wiring (bottles)
+      document.querySelectorAll("button[data-vadd]").forEach((btn) => {
+        btn.onclick = async () => {
+          const pid = btn.getAttribute("data-vadd");
+          const row = btn.closest("tr");
+          const val = (f) => row.querySelector(`[data-vnew="${f}"]`).value.trim();
+          const body = { id: val("id"), label: val("label"), color: row.querySelector('[data-vnew="color"]').value };
+          if (!body.id || !body.label) { alert("Color needs an id and a label"); return; }
+          try { await api(`/api/admin/products/${encodeURIComponent(pid)}/variants`, { method: "POST", body: JSON.stringify(body) }); await loadProducts(); }
+          catch (e) { alert("Add color failed: " + e.message); }
+        };
+      });
+      document.querySelectorAll("button[data-vimg]").forEach((btn) => {
+        btn.onclick = () => btn.parentElement.querySelector(`input[data-vfile="${CSS.escape(btn.getAttribute("data-vimg"))}"]`).click();
+      });
+      document.querySelectorAll("input[data-vfile]").forEach((inp) => {
+        inp.onchange = async () => {
+          const [pid, vid] = inp.getAttribute("data-vfile").split("|");
+          if (!inp.files || !inp.files[0]) return;
+          const fd = new FormData();
+          fd.append("image", inp.files[0]);
+          try {
+            const res = await fetch(`/api/admin/products/${encodeURIComponent(pid)}/variants/${encodeURIComponent(vid)}/image`, {
+              method: "POST", headers: { "X-Admin-Token": token }, body: fd,
+            });
+            if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || res.status);
+            await loadProducts();
+          } catch (e) { alert("Image upload failed: " + e.message); }
+        };
+      });
+      document.querySelectorAll("button[data-vdel]").forEach((btn) => {
+        btn.onclick = async () => {
+          const [pid, vid] = btn.getAttribute("data-vdel").split("|");
+          if (!confirm(`Remove color "${vid}"?`)) return;
+          try { await api(`/api/admin/products/${encodeURIComponent(pid)}/variants/${encodeURIComponent(vid)}`, { method: "DELETE" }); await loadProducts(); }
           catch (e) { alert("Remove failed: " + e.message); }
         };
       });
