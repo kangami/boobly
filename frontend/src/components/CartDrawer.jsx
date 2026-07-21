@@ -168,7 +168,7 @@ export default function CartDrawer() {
                           className="cart-thumb"
                           style={
                             i.image
-                              ? { backgroundImage: `url(${i.image})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                              ? { backgroundImage: `url("${i.image}")`, backgroundSize: 'cover', backgroundPosition: 'center' }
                               : { background: i.color || '#a05cfa' }
                           }
                         >

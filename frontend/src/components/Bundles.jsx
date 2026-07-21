@@ -50,7 +50,7 @@ export default function Bundles({ bundles, onToast }) {
                 >
                   {b.badge && <div className="pcard-flag">{b.badge}</div>}
                   {b.image
-                    ? <div className="pcard-img" style={{ backgroundImage: `url(${b.image})` }} />
+                    ? <div className="pcard-img" style={{ backgroundImage: `url("${b.image}")` }} />
                     : <div className="pcard-emoji">{b.emoji}</div>}
                   <div className="pcard-rating">
                     <span className="stars">★★★★★</span> {rating}

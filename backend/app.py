@@ -415,7 +415,10 @@ def _store_image(pid, file_storage):
         raise ValueError(f"image must be one of {sorted(ALLOWED_IMAGE_EXT)}")
     data = file_storage.read()
     content_type = file_storage.mimetype or "application/octet-stream"
-    filename = f"{pid}-{uuid.uuid4().hex[:8]}.{ext}"
+    # Slugify the prefix so filenames never contain spaces/parens/etc. that
+    # would break an unquoted CSS url() or need URL-encoding downstream.
+    safe = "".join(c if c.isalnum() else "-" for c in pid).strip("-") or "img"
+    filename = f"{safe}-{uuid.uuid4().hex[:8]}.{ext}"
 
     client = supabase_client._get_client()
     if client is not None:

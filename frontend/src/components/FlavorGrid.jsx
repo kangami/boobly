@@ -82,7 +82,7 @@ export default function FlavorGrid({ flavors, podPrice, podSize, onToast }) {
                   <div className="pcard-hero" style={{ background: gradientCss(flavor) }}>
                     <div className="pcard-flag">{flavor.family || 'Fruit'}</div>
                     {flavor.image
-                      ? <div className="pcard-img" style={{ backgroundImage: `url(${flavor.image})` }} />
+                      ? <div className="pcard-img" style={{ backgroundImage: `url("${flavor.image}")` }} />
                       : <div className="pcard-emoji">{flavor.emoji}</div>}
                     <div className="pcard-rating">
                       <span className="stars">★★★★★</span> {rating}
@@ -153,7 +153,7 @@ function FlavorModal({ flavor, podPrice, podSize, onClose, onAdd }) {
               style={
                 flavor.image
                   ? {
-                      backgroundImage: `linear-gradient(180deg, rgba(0,0,0,0.15), rgba(0,0,0,0.55)), url(${flavor.image})`,
+                      backgroundImage: `linear-gradient(180deg, rgba(0,0,0,0.15), rgba(0,0,0,0.55)), url("${flavor.image}")`,
                       backgroundSize: 'cover',
                       backgroundPosition: 'center',
                     }

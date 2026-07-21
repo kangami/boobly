@@ -38,7 +38,7 @@ function BottleCard({ b, i, onAdd }) {
             transition={{ duration: 0.3, ease: 'easeOut' }}
           >
             {activeImage
-              ? <div className="pcard-img" style={{ backgroundImage: `url(${activeImage})` }} />
+              ? <div className="pcard-img" style={{ backgroundImage: `url("${activeImage}")` }} />
               : <div className="pcard-emoji">{b.emoji}</div>}
           </motion.div>
         </AnimatePresence>
